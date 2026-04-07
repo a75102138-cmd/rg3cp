@@ -1,0 +1,1 @@
+// API-facing enums can be added here if you prefer not to expose @prisma/client enums directly.

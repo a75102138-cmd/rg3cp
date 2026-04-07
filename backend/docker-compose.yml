@@ -1,0 +1,19 @@
+# Local PostgreSQL for development / API verification.
+# Usage (Docker Desktop running): docker compose up -d
+# Then: copy .env.example to .env and set DATABASE_URL to postgresql://postgres:postgres@localhost:5433/patrimoine?schema=public
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: patrimoine-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: patrimoine
+    ports:
+      - '5433:5432'
+    volumes:
+      - patrimoine_pgdata:/var/lib/postgresql/data
+
+volumes:
+  patrimoine_pgdata:
