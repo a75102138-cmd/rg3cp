@@ -19,10 +19,12 @@ import { useRef, useState } from "react";
 
 type Props = { projectId: string; projectName: string };
 type UploadContext = { tableName: string; subFolder: string } | null;
+type EssaisSubFolderNode = (typeof ESSAIS_FOLDER_CONFIG.tables)[number]["subFolders"][number];
+type EssaisSubFolderGroup = Extract<EssaisSubFolderNode, { children: readonly unknown[] }>;
 
 function isNodeWithChildren(
-  node: (typeof ESSAIS_FOLDER_CONFIG.tables)[number]["subFolders"][number],
-): node is { name: string; children: readonly string[] } {
+  node: EssaisSubFolderNode,
+): node is EssaisSubFolderGroup {
   return typeof node === "object" && node != null && "children" in node;
 }
 

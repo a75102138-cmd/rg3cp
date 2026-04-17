@@ -136,6 +136,9 @@ export type ApiZone = {
   projectId: string;
   code: string;
   name: string;
+  parentZoneId?: string | null;
+  zoneType?: string;
+  heritageSensitivity?: string | null;
   /** Couverture (Cloudinary `rg3cp/{projectCode}/zones/{zoneCode}/cover`). */
   imageUrl?: string | null;
   description: string | null;

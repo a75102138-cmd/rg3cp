@@ -33,7 +33,7 @@ function extractProjectModule(pathname: string): string | null {
 }
 
 export function isNavActive(pathname: string, entry: MainNavEntry): boolean {
-  const module = extractProjectModule(pathname);
+  const projectModule = extractProjectModule(pathname);
 
   if (entry.path === "/projects") {
     return pathname === "/projects" || /^\/projects\/[^/]+$/.test(pathname);
@@ -56,7 +56,7 @@ export function isNavActive(pathname: string, entry: MainNavEntry): boolean {
   };
   const expectedModule = projectModuleByEntryPath[entry.path];
 
-  if (module && expectedModule) return module === expectedModule;
+  if (projectModule && expectedModule) return projectModule === expectedModule;
   if (entry.path === "/") return pathname === "/";
   return pathname === entry.path || pathname.startsWith(`${entry.path}/`);
 }

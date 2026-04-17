@@ -1,5 +1,5 @@
 import type { ApiZone } from "@/types/api";
-import type { HeritageSensitivity, Zone, ZoneType } from "@/types/domain";
+import type { Zone, ZoneType } from "@/types/domain";
 import { toHeritageUi } from "@/lib/api/badge";
 import { formatZoneSpatialTypeFr } from "@/lib/zone-spatial";
 
@@ -27,9 +27,9 @@ export function apiZoneToTreeZone(z: ApiZone): Zone {
     projectId: z.projectId,
     name: z.name,
     code: z.code,
-    parentZoneId: z.parentZoneId,
-    type: ZONE_TYPE_MAP[z.zoneType] ?? "ensemble",
-    heritageSensitivity: toHeritageUi(z.heritageSensitivity),
+    parentZoneId: z.parentZoneId ?? null,
+    type: z.zoneType ? (ZONE_TYPE_MAP[z.zoneType] ?? "ensemble") : "ensemble",
+    heritageSensitivity: toHeritageUi(z.heritageSensitivity ?? null),
     status: "monitoring",
     description: z.description ?? "",
     referencePlan: "—",

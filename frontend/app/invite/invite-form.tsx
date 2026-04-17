@@ -86,7 +86,7 @@ export function InviteForm() {
         </div>
 
         {loadingInfo ? (
-          <p className="text-center text-sm text-muted-foreground">Verification de l'invitation...</p>
+          <p className="text-center text-sm text-muted-foreground">Verification de l&apos;invitation...</p>
         ) : !inviteInfo ? (
           <div className="space-y-3 text-center">
             <p className="text-sm text-destructive">Invitation invalide ou expiree.</p>
