@@ -11,6 +11,10 @@ import { UpdateActorDto } from './dto/update-actor.dto';
 export class ActorsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private uniqueIds(ids: string[]): string[] {
+    return Array.from(new Set((ids ?? []).filter(Boolean)));
+  }
+
   private async nextCode(): Promise<string> {
     const count = await this.prisma.actor.count();
     let n = count + 1;
@@ -39,6 +43,11 @@ export class ActorsService {
           role: dto.role,
           email: dto.email?.trim() || null,
           phone: dto.phone?.trim() || null,
+        },
+        include: {
+          projectAssignments: {
+            select: { projectId: true },
+          },
         },
       });
     } catch (e) {
@@ -72,13 +81,25 @@ export class ActorsService {
         skip: getSkip(page, limit),
         take: limit,
         orderBy: this.orderBy(query),
+        include: {
+          projectAssignments: {
+            select: { projectId: true },
+          },
+        },
       }),
     ]);
     return { data, meta: buildMeta(page, limit, total) };
   }
 
   async findOne(id: string) {
-    const actor = await this.prisma.actor.findUnique({ where: { id } });
+    const actor = await this.prisma.actor.findUnique({
+      where: { id },
+      include: {
+        projectAssignments: {
+          select: { projectId: true },
+        },
+      },
+    });
     if (!actor) throw new NotFoundException('Actor not found');
     return actor;
   }
@@ -95,6 +116,11 @@ export class ActorsService {
           ...(dto.email !== undefined ? { email: dto.email?.trim() || null } : {}),
           ...(dto.phone !== undefined ? { phone: dto.phone?.trim() || null } : {}),
         },
+        include: {
+          projectAssignments: {
+            select: { projectId: true },
+          },
+        },
       });
     } catch (e) {
       handlePrismaError(e);
@@ -109,5 +135,89 @@ export class ActorsService {
       handlePrismaError(e);
     }
     return { deleted: true, id };
+  }
+
+  async findAssignedProjects(id: string) {
+    await this.findOne(id);
+    const rows = await this.prisma.projectActorAssignment.findMany({
+      where: { actorId: id },
+      select: {
+        projectId: true,
+        project: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((row) => row.project);
+  }
+
+  async updateAssignedProjects(id: string, projectIds: string[]) {
+    await this.findOne(id);
+    const uniqueProjectIds = this.uniqueIds(projectIds);
+    const prevProjects = await this.findAssignedProjects(id);
+    const prevProjectIds = prevProjects.map((p) => p.id);
+
+    const actor = await this.prisma.actor.findUnique({
+      where: { id },
+      select: { email: true },
+    });
+
+    // Bridge actor -> user mapping for validator permissions:
+    // We treat the user account having the same email (and role ACTEUR) as the validator account.
+    const targetUserIds =
+      actor?.email?.trim()
+        ? (
+            await this.prisma.user.findMany({
+              where: { email: actor.email.trim(), role: 'ACTEUR' as any },
+              select: { id: true },
+            })
+          ).map((u) => u.id)
+        : [];
+
+    if (uniqueProjectIds.length) {
+      const totalProjects = await this.prisma.project.count({
+        where: { id: { in: uniqueProjectIds } },
+      });
+      if (totalProjects !== uniqueProjectIds.length) {
+        throw new NotFoundException('Au moins un projet assigné est introuvable');
+      }
+    }
+    await this.prisma.$transaction([
+      this.prisma.projectActorAssignment.deleteMany({ where: { actorId: id } }),
+      ...(uniqueProjectIds.length
+        ? [
+            this.prisma.projectActorAssignment.createMany({
+              data: uniqueProjectIds.map((projectId) => ({ actorId: id, projectId })),
+            }),
+          ]
+        : []),
+      ...(targetUserIds.length && prevProjectIds.length
+        ? [
+            this.prisma.projectUserAssignment.deleteMany({
+              where: {
+                projectId: { in: prevProjectIds },
+                userId: { in: targetUserIds },
+              },
+            }),
+          ]
+        : []),
+      ...(targetUserIds.length && uniqueProjectIds.length
+        ? [
+            this.prisma.projectUserAssignment.createMany({
+              data: uniqueProjectIds.flatMap((projectId) =>
+                targetUserIds.map((userId) => ({ projectId, userId })),
+              ),
+              skipDuplicates: true,
+            }),
+          ]
+        : []),
+    ]);
+    return this.findAssignedProjects(id);
   }
 }

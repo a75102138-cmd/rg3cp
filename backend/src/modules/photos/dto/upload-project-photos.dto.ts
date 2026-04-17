@@ -1,8 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { OptionalTakenAtField } from './optional-taken-at-field';
 import { PROJECT_PHOTO_TYPES } from './project-photo-type';
 
-export class UploadProjectPhotosBodyDto {
+export class UploadProjectPhotosBodyDto extends OptionalTakenAtField {
   @ApiProperty()
   @IsUUID()
   projectId: string;

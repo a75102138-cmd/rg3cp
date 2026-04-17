@@ -13,9 +13,13 @@
     "prisma:ensure-photo-phase": "prisma db execute --schema prisma/schema.prisma --file prisma/migrations/20260407180000_photo_phase_idempotent/migration.sql",
     "prisma:studio": "prisma studio",
     "prisma:seed": "prisma db seed",
-    "verify:api": "node scripts/verify-api.mjs"
+    "verify:api": "node scripts/verify-api.mjs",
+    "migrate:cloudinary-rg3cp": "node scripts/migrate-cloudinary-project-prefix.cjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1028.0",
+    "@aws-sdk/lib-storage": "^3.1028.0",
+    "@aws-sdk/s3-request-presigner": "^3.1028.0",
     "@nestjs/common": "^10.4.15",
     "@nestjs/config": "^3.3.0",
     "@nestjs/core": "^10.4.15",
@@ -30,9 +34,12 @@
     "class-validator": "^0.14.1",
     "cloudinary": "^2.5.1",
     "dotenv": "^16.4.7",
+    "exifr": "^7.1.3",
+    "nodemailer": "^8.0.5",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.12.0",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
@@ -42,6 +49,7 @@
     "@types/express": "^5.0.0",
     "@types/multer": "^2.1.0",
     "@types/node": "^22.10.2",
+    "@types/nodemailer": "^8.0.0",
     "@types/passport-jwt": "^4.0.1",
     "eslint": "^9.17.0",
     "prettier": "^3.4.2",

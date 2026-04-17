@@ -1,0 +1,6 @@
+ALTER TABLE "Zone" DROP CONSTRAINT IF EXISTS "Zone_parentZoneId_fkey";
+ALTER TABLE "Zone" DROP COLUMN IF EXISTS "parentZoneId";
+ALTER TABLE "Zone" DROP COLUMN IF EXISTS "type";
+ALTER TABLE "Zone" DROP COLUMN IF EXISTS "heritageSensitivity";
+
+DROP INDEX IF EXISTS "Zone_parentZoneId_idx";

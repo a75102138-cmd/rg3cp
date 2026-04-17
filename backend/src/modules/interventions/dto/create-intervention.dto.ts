@@ -64,4 +64,9 @@ export class CreateInterventionDto {
   @IsOptional()
   @IsDateString()
   plannedEnd?: string;
+
+  @ApiPropertyOptional({ description: 'Date métier de l’événement chantier (ISO 8601)' })
+  @IsOptional()
+  @IsDateString()
+  eventDate?: string;
 }

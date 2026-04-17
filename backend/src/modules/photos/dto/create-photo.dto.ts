@@ -118,4 +118,11 @@ export class CreatePhotoDto {
   @IsOptional()
   @IsUUID()
   authorActorId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Date réelle de prise de vue (ISO 8601), distincte de la date d’upload.',
+  })
+  @IsOptional()
+  @IsString()
+  takenAt?: string;
 }

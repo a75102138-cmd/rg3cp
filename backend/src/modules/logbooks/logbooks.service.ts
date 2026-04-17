@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { assertBusinessDateRange } from '../../common/utils/business-date.util';
+import { resolveDateRangePreset } from '../../common/utils/date-range-preset.util';
 import { buildMeta, getSkip } from '../../common/utils/pagination.util';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
 import { requireActor, requireProject } from '../../common/validation/domain-validation';
@@ -144,10 +146,16 @@ export class LogbooksService {
       where.authorName = { contains: query.authorName, mode: 'insensitive' };
     }
     if (query.weather) where.weather = query.weather;
-    if (query.dateFrom || query.dateTo) {
+    const presetRange = resolveDateRangePreset(query.datePreset);
+    if (presetRange || query.dateFrom || query.dateTo) {
       where.eventAt = {};
-      if (query.dateFrom) where.eventAt.gte = new Date(query.dateFrom);
-      if (query.dateTo) where.eventAt.lte = new Date(query.dateTo);
+      if (presetRange) {
+        where.eventAt.gte = presetRange.from;
+        where.eventAt.lte = presetRange.to;
+      } else {
+        if (query.dateFrom) where.eventAt.gte = new Date(query.dateFrom);
+        if (query.dateTo) where.eventAt.lte = new Date(query.dateTo);
+      }
     }
     if (query.search?.length) {
       where.OR = [
@@ -207,6 +215,7 @@ export class LogbooksService {
       if (Number.isNaN(eventAt.getTime())) {
         throw new BadRequestException('eventAt invalide');
       }
+      assertBusinessDateRange(eventAt);
     }
     try {
       await this.prisma.$transaction(async (tx) => {

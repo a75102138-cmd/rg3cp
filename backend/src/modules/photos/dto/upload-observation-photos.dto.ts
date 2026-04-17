@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PhotoPhase } from '@prisma/client';
 import { IsEnum, IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { OptionalTakenAtField } from './optional-taken-at-field';
 
 const OBSERVATION_PHOTO_TYPES = [
   'VUE_ENSEMBLE',
@@ -10,7 +11,7 @@ const OBSERVATION_PHOTO_TYPES = [
   'AUTRE',
 ] as const;
 
-export class UploadObservationPhotosBodyDto {
+export class UploadObservationPhotosBodyDto extends OptionalTakenAtField {
   @ApiProperty()
   @IsUUID()
   observationId: string;

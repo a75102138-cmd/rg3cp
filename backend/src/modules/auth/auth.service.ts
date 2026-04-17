@@ -25,7 +25,7 @@ export class AuthService {
     };
     return {
       accessToken: this.jwtService.sign(payload),
-      user: this.usersService.toPublic(user),
+      user: await this.usersService.findPublicById(user.id),
     };
   }
 

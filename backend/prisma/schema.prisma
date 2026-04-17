@@ -208,9 +208,32 @@ enum ActorRole {
 
 /** Rôles plateforme (comptes utilisateurs). */
 enum UserRole {
+  ADMIN
   USER
-  PROJECT_ADMIN
-  SUPER_ADMIN
+  ACTEUR
+}
+
+enum AccountStatus {
+  INVITED
+  ACTIVE
+
+  @@map("UserAccountStatus")
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum UploadScope {
+  PROJECT
+  ZONE
+}
+
+enum StorageType {
+  CLOUDINARY
+  B2
 }
 
 enum FileKind {
@@ -250,12 +273,28 @@ model User {
   email        String   @unique
   passwordHash String
   role         UserRole
+  defaultValidatorUserId String? @db.Uuid
+  status       AccountStatus @default(ACTIVE)
+  inviteToken  String?  @unique
+  inviteTokenExpiresAt DateTime?
+  invitedAt    DateTime?
+  acceptedAt   DateTime?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  defaultValidator  User?      @relation("UserDefaultValidator", fields: [defaultValidatorUserId], references: [id], onDelete: SetNull)
+  assignedUsers     User[]     @relation("UserDefaultValidator")
+  uploadedDocuments  Document[] @relation("DocumentUploadedByUser")
+  validatedDocuments Document[] @relation("DocumentValidatedByUser")
+  uploadedPhotos     Photo[]    @relation("PhotoUploadedByUser")
+  validatedPhotos    Photo[]    @relation("PhotoValidatedByUser")
+  projectAssignments ProjectUserAssignment[]
+
   @@index([email])
   @@index([role])
+  @@index([status])
+  @@index([defaultValidatorUserId])
 }
 
 // ---------------------------------------------------------------------------
@@ -287,15 +326,13 @@ model Actor {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  projectsAsOwner      Project[]       @relation("ProjectOwnerActor")
-  projectsAsArchitect  Project[]       @relation("ProjectArchitectActor")
-  projectsAsCompany    Project[]       @relation("ProjectCompanyActor")
   observationsAsAuthor Observation[]   @relation("ObservationAuthorActor")
   interventionsAsCompany Intervention[] @relation("InterventionCompanyActor")
   labTestsAsLaboratory LabTest[]       @relation("LabTestLaboratoryActor")
   documentsAsAuthor    Document[]      @relation("DocumentAuthorActor")
   photosAsAuthor       Photo[]         @relation("PhotoAuthorActor")
   logbooksAsAuthor     Logbook[]       @relation("LogbookAuthorActor")
+  projectAssignments   ProjectActorAssignment[]
 }
 
 model Project {
@@ -308,12 +345,6 @@ model Project {
   status          ProjectStatus @default(PLANNED)
   imageUrl        String?
   description     String?
-  maitreOuvrageActorId  String?       @db.Uuid
-  maitreOuvrageActor    Actor?        @relation("ProjectOwnerActor", fields: [maitreOuvrageActorId], references: [id], onDelete: SetNull)
-  architectActorId      String?       @db.Uuid
-  architectActor        Actor?        @relation("ProjectArchitectActor", fields: [architectActorId], references: [id], onDelete: SetNull)
-  companyActorId        String?       @db.Uuid
-  companyActor          Actor?        @relation("ProjectCompanyActor", fields: [companyActorId], references: [id], onDelete: SetNull)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -322,11 +353,38 @@ model Project {
   documents Document[]
   photos    Photo[]
   risks     Risk[]
+  userAssignments  ProjectUserAssignment[]
+  actorAssignments ProjectActorAssignment[]
 
   @@index([status])
-  @@index([maitreOuvrageActorId])
-  @@index([architectActorId])
-  @@index([companyActorId])
+}
+
+model ProjectUserAssignment {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @db.Uuid
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model ProjectActorAssignment {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @db.Uuid
+  actorId   String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actor   Actor   @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, actorId])
+  @@index([projectId])
+  @@index([actorId])
 }
 
 // ---------------------------------------------------------------------------
@@ -337,15 +395,10 @@ model Zone {
   id                   String               @id @default(uuid()) @db.Uuid
   projectId            String               @db.Uuid
   project              Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  parentZoneId         String?              @db.Uuid
-  /** Suppression d’une zone parent : les sous-zones sont supprimées en cascade. */
-  parent               Zone?                @relation("ZoneHierarchy", fields: [parentZoneId], references: [id], onDelete: Cascade)
-  children             Zone[]               @relation("ZoneHierarchy")
   code                 String
   name                 String
-  /** Colonne SQL `type` — propriété client Prisma `zoneType`. */
-  zoneType             ZoneType             @map("type")
-  heritageSensitivity  HeritageSensitivity?
+  /** Couverture zone → Cloudinary `rg3cp/{projectCode}/zones/{zoneCode}/cover`. */
+  imageUrl             String?
   description          String?
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
@@ -356,13 +409,14 @@ model Zone {
   decisions        Decision[]
   interventions    Intervention[]
   labTests         LabTest[]
-  documents        Document[]
-  photos           Photo[]
+  documents        Document[] @relation("DocumentPrimaryZone")
+  relatedDocuments Document[] @relation("DocumentRelatedZone")
+  photos           Photo[]    @relation("PhotoPrimaryZone")
+  relatedPhotos    Photo[]    @relation("PhotoRelatedZone")
   risks            Risk[]
 
   @@unique([projectId, code])
   @@index([projectId])
-  @@index([parentZoneId])
 }
 
 model Element {
@@ -421,6 +475,7 @@ model Observation {
   @@index([zoneId])
   @@index([elementId])
   @@index([authorActorId])
+  @@index([observedAt])
 }
 
 model Pathology {
@@ -484,6 +539,7 @@ model Decision {
   @@index([zoneId])
   @@index([observationId])
   @@index([pathologyId])
+  @@index([decidedAt])
 }
 
 model Intervention {
@@ -503,6 +559,8 @@ model Intervention {
   interventionType InterventionType
   status           InterventionStatus @default(PLANNED)
   description      String?            @db.Text
+  /** Date métier de l’événement chantier (distinct des dates techniques / planning). */
+  eventDate        DateTime?
   plannedStart     DateTime?
   plannedEnd       DateTime?
   createdAt        DateTime           @default(now())
@@ -519,6 +577,7 @@ model Intervention {
   @@index([elementId])
   @@index([pathologyId])
   @@index([companyActorId])
+  @@index([eventDate])
 }
 
 // ---------------------------------------------------------------------------
@@ -624,11 +683,20 @@ model Document {
   bytes             Int?
   format            String?
   title             String?
+  category          String        @default("BDD_ADMIN")
+  subCategory       String?
+  bddCategory       String?
+  tableName         String?
+  subFolder         String?
+  folderPath        String?
+  status            ReviewStatus  @default(PENDING)
+  scope             UploadScope   @default(PROJECT)
+  storageType       StorageType   @default(CLOUDINARY)
 
   projectId         String?       @db.Uuid
   project           Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   zoneId            String?       @db.Uuid
-  zone              Zone?         @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  zone              Zone?         @relation("DocumentPrimaryZone", fields: [zoneId], references: [id], onDelete: Cascade)
   observationId     String?       @db.Uuid
   observation       Observation?  @relation(fields: [observationId], references: [id], onDelete: Cascade)
   pathologyId       String?       @db.Uuid
@@ -643,6 +711,17 @@ model Document {
   authorActor       Actor?        @relation("DocumentAuthorActor", fields: [authorActorId], references: [id], onDelete: SetNull)
 
   authorName        String?
+  uploadedById      String?       @db.Uuid
+  uploadedBy        User?         @relation("DocumentUploadedByUser", fields: [uploadedById], references: [id], onDelete: SetNull)
+  validatedById     String?       @db.Uuid
+  validatedBy       User?         @relation("DocumentValidatedByUser", fields: [validatedById], references: [id], onDelete: SetNull)
+  validatedAt       DateTime?
+  remarks           String?       @db.Text
+  relatedZoneId     String?       @db.Uuid
+  relatedZone       Zone?         @relation("DocumentRelatedZone", fields: [relatedZoneId], references: [id], onDelete: SetNull)
+
+  /** Date métier du document (scan, PV, etc.) — distincte de la date d’upload. */
+  documentDate      DateTime?
 
   pvForDecision     Decision?     @relation("DecisionPvDocument")
   labTests          LabTest[]     @relation("LabTestReport")
@@ -659,6 +738,17 @@ model Document {
   @@index([logbookId])
   @@index([authorActorId])
   @@index([publicId])
+  @@index([documentDate])
+  @@index([status])
+  @@index([category])
+  @@index([bddCategory])
+  @@index([tableName])
+  @@index([subFolder])
+  @@index([folderPath])
+  @@index([relatedZoneId])
+  @@index([validatedAt])
+  @@index([uploadedById])
+  @@index([validatedById])
 }
 
 model Photo {
@@ -676,11 +766,20 @@ model Photo {
   caption          String?
   photoType        String?
   photoPhase       PhotoPhase?
+  category         String        @default("BDD_MEDIA")
+  subCategory      String?
+  bddCategory      String?
+  tableName        String?
+  subFolder        String?
+  folderPath       String?
+  status           ReviewStatus  @default(PENDING)
+  scope            UploadScope   @default(PROJECT)
+  storageType      StorageType   @default(CLOUDINARY)
 
   projectId        String?       @db.Uuid
   project          Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   zoneId           String?       @db.Uuid
-  zone             Zone?         @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  zone             Zone?         @relation("PhotoPrimaryZone", fields: [zoneId], references: [id], onDelete: Cascade)
   elementId        String?       @db.Uuid
   /** Suppression de l’élément : médias rattachés directement à l’élément supprimés. */
   element          Element?      @relation(fields: [elementId], references: [id], onDelete: Cascade)
@@ -696,6 +795,18 @@ model Photo {
   authorActor      Actor?        @relation("PhotoAuthorActor", fields: [authorActorId], references: [id], onDelete: SetNull)
 
   authorName       String?
+  uploadedById     String?       @db.Uuid
+  uploadedBy       User?         @relation("PhotoUploadedByUser", fields: [uploadedById], references: [id], onDelete: SetNull)
+  validatedById    String?       @db.Uuid
+  validatedBy      User?         @relation("PhotoValidatedByUser", fields: [validatedById], references: [id], onDelete: SetNull)
+  validatedAt      DateTime?
+  remarks          String?       @db.Text
+  relatedZoneId    String?       @db.Uuid
+  relatedZone      Zone?         @relation("PhotoRelatedZone", fields: [relatedZoneId], references: [id], onDelete: SetNull)
+
+  /** Date réelle de prise de vue (EXIF ou saisie) — distincte de la date d’upload. */
+  takenAt          DateTime?
+  dateFolder       String?
 
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
@@ -709,6 +820,18 @@ model Photo {
   @@index([logbookId])
   @@index([authorActorId])
   @@index([publicId])
+  @@index([takenAt])
+  @@index([dateFolder])
+  @@index([status])
+  @@index([category])
+  @@index([bddCategory])
+  @@index([tableName])
+  @@index([subFolder])
+  @@index([folderPath])
+  @@index([relatedZoneId])
+  @@index([validatedAt])
+  @@index([uploadedById])
+  @@index([validatedById])
 }
 
 // ---------------------------------------------------------------------------

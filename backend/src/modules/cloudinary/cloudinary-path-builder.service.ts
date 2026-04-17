@@ -5,8 +5,8 @@ import { FileKind } from '@prisma/client';
  * Centralizes Cloudinary `folder` / `asset_folder` segments so uploads stay consistent.
  * Paths are string builders only — no SDK calls here (upload service comes later).
  *
- * Zone / observation / … paths use `projects/{projectCode}/...`.
- * **Documents globaux projet** : racine imposée `rg3cp/{projectCode}/documents/{typeSlug}`.
+ * **Convention unique** : tout passe sous `rg3cp/{projectCode}/...` (pas de `project/{uuid}`, pas d’ID projet dans le chemin).
+ * Dépôts dossiers métier (BDD / journal / essais / média) : `rg3cp/{code}/{module}/{…segments}`.
  */
 @Injectable()
 export class CloudinaryPathBuilderService {
@@ -20,6 +20,67 @@ export class CloudinaryPathBuilderService {
 
   private projectRoot(projectCode: string): string {
     return `projects/${this.seg(projectCode)}`;
+  }
+
+  /**
+   * Documents « bibliothèque » (BDD + risques) : `rg3cp/{code}/documents/{bddCategory}/{tableName}/{subFolder}`
+   * (ex. rg3cp/PRJ-TINMEL-26/documents/BDD_ADMIN/T_CONTRATS/…).
+   */
+  unifiedDocumentsModuleFolder(
+    projectCode: string,
+    bddCategory: string,
+    tableName: string,
+    subFolder: string,
+  ): string {
+    return `${CloudinaryPathBuilderService.PROJECT_DOCS_ROOT}/${this.seg(projectCode)}/documents/${this.seg(bddCategory)}/${this.seg(tableName)}/${this.seg(subFolder)}`;
+  }
+
+  /** Upload direct au niveau table : `rg3cp/{code}/documents/{bddCategory}/{tableName}` */
+  unifiedDocumentsTableFolder(projectCode: string, bddCategory: string, tableName: string): string {
+    return `${CloudinaryPathBuilderService.PROJECT_DOCS_ROOT}/${this.seg(projectCode)}/documents/${this.seg(bddCategory)}/${this.seg(tableName)}`;
+  }
+
+  /**
+   * Journal (carnet) : `rg3cp/{code}/journal/{tableName}/{effectiveSubFolder}/{dateFolder}`
+   */
+  unifiedJournalModuleFolder(
+    projectCode: string,
+    tableName: string,
+    effectiveSubFolder: string,
+    dateFolder: string,
+  ): string {
+    return `${CloudinaryPathBuilderService.PROJECT_DOCS_ROOT}/${this.seg(projectCode)}/journal/${this.seg(tableName)}/${this.seg(effectiveSubFolder)}/${this.seg(dateFolder)}`;
+  }
+
+  /**
+   * Essais : `rg3cp/{code}/essais/{tableName}/{subFolder}`
+   */
+  unifiedEssaisModuleFolder(projectCode: string, tableName: string, subFolder: string): string {
+    return `${CloudinaryPathBuilderService.PROJECT_DOCS_ROOT}/${this.seg(projectCode)}/essais/${this.seg(tableName)}/${this.seg(subFolder)}`;
+  }
+
+  /**
+   * Média chantier (upload unifié, scope projet) : `rg3cp/{code}/media/{tableName}/{subFolder}`
+   */
+  unifiedMediaModuleFolder(projectCode: string, tableName: string, subFolder: string): string {
+    return `${CloudinaryPathBuilderService.PROJECT_DOCS_ROOT}/${this.seg(projectCode)}/media/${this.seg(tableName)}/${this.seg(subFolder)}`;
+  }
+
+  /**
+   * Média zone : `rg3cp/{code}/zones/{zoneCode}/media/{tableName}/{subFolder}`
+   */
+  unifiedMediaZoneModuleFolder(
+    projectCode: string,
+    zoneCode: string,
+    tableName: string,
+    subFolder: string,
+  ): string {
+    return `${CloudinaryPathBuilderService.PROJECT_DOCS_ROOT}/${this.seg(projectCode)}/zones/${this.seg(zoneCode)}/media/${this.seg(tableName)}/${this.seg(subFolder)}`;
+  }
+
+  /** Suivi avancement (zone) : `rg3cp/{code}/zones/{zoneCode}/media/avancement` */
+  unifiedMediaZoneAvancementFolder(projectCode: string, zoneCode: string): string {
+    return `${CloudinaryPathBuilderService.PROJECT_DOCS_ROOT}/${this.seg(projectCode)}/zones/${this.seg(zoneCode)}/media/avancement`;
   }
 
   // --- Project-level (global project documents) — rg3cp ---
@@ -93,9 +154,9 @@ export class CloudinaryPathBuilderService {
     return `${this.projectRoot(projectCode)}/journal`;
   }
 
-  /** Photos déposées depuis le journal de chantier (Cloudinary folder). */
+  /** Photos déposées depuis le journal de chantier — `rg3cp/{code}/journal/photos`. */
   projectJournalPhotosFolder(projectCode: string): string {
-    return `${this.projectJournalFolder(projectCode)}/photos`;
+    return `${CloudinaryPathBuilderService.PROJECT_DOCS_ROOT}/${this.seg(projectCode)}/journal/photos`;
   }
 
   // --- Zone-level ---
@@ -109,6 +170,11 @@ export class CloudinaryPathBuilderService {
 
   zonePhotosFolder(projectCode: string, zoneCode: string): string {
     return `${this.zoneRoot(projectCode, zoneCode)}/photos`;
+  }
+
+  /** Image de couverture zone : `rg3cp/{projectCode}/zones/{zoneCode}/cover` */
+  zoneCoverFolderRg3cp(projectCode: string, zoneCode: string): string {
+    return `${CloudinaryPathBuilderService.PROJECT_DOCS_ROOT}/${this.seg(projectCode)}/zones/${this.seg(zoneCode)}/cover`;
   }
 
   /**

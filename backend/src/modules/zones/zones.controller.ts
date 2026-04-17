@@ -8,8 +8,12 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { CreateZoneDto } from './dto/create-zone.dto';
 import { QueryZoneDto } from './dto/query-zone.dto';
 import { UpdateZoneDto } from './dto/update-zone.dto';
@@ -24,6 +28,22 @@ export class ZonesController {
   @Post()
   create(@Body() dto: CreateZoneDto) {
     return this.zonesService.create(dto);
+  }
+
+  @Post(':id/cover')
+  @ApiOperation({ summary: 'Image de couverture → Cloudinary rg3cp/{code}/zones/{zoneCode}/cover' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 100 * 1024 * 1024 },
+    }),
+  )
+  uploadCover(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ) {
+    return this.zonesService.uploadCover(id, file);
   }
 
   @Get()

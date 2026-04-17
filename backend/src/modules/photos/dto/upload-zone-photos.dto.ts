@@ -1,8 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PhotoPhase } from '@prisma/client';
 import { IsEnum, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { OptionalTakenAtField } from './optional-taken-at-field';
 
-export class UploadZonePhotosBodyDto {
+export class UploadZonePhotosBodyDto extends OptionalTakenAtField {
   @ApiProperty()
   @IsUUID()
   zoneId: string;

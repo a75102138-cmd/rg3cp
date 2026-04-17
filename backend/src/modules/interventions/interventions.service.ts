@@ -1,5 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import {
+  parseBusinessDateString,
+  parseOptionalBusinessDateString,
+} from '../../common/utils/business-date.util';
+import { resolveDateRangePreset } from '../../common/utils/date-range-preset.util';
 import { buildMeta, getSkip } from '../../common/utils/pagination.util';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
 import {
@@ -70,6 +75,7 @@ export class InterventionsService {
           description: dto.description,
           plannedStart: dto.plannedStart ? new Date(dto.plannedStart) : undefined,
           plannedEnd: dto.plannedEnd ? new Date(dto.plannedEnd) : undefined,
+          eventDate: parseOptionalBusinessDateString(dto.eventDate),
         },
       });
     } catch (e) {
@@ -80,7 +86,7 @@ export class InterventionsService {
   async findAll(query: QueryInterventionDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
-    const where: Prisma.InterventionWhereInput = {};
+    let where: Prisma.InterventionWhereInput = {};
     if (query.decisionId) where.decisionId = query.decisionId;
     if (query.zoneId) where.zoneId = query.zoneId;
     if (query.elementId) where.elementId = query.elementId;
@@ -96,6 +102,29 @@ export class InterventionsService {
         { description: { contains: query.search, mode: 'insensitive' } },
         { companyName: { contains: query.search, mode: 'insensitive' } },
       ];
+    }
+    const presetRange = resolveDateRangePreset(query.datePreset);
+    if (presetRange || query.dateFrom || query.dateTo) {
+      const from =
+        presetRange?.from ??
+        (query.dateFrom ? new Date(query.dateFrom) : new Date(0));
+      const to =
+        presetRange?.to ??
+        (query.dateTo ? new Date(query.dateTo) : new Date(8640000000000000));
+      const dateWhere: Prisma.InterventionWhereInput = {
+        OR: [
+          {
+            AND: [
+              { eventDate: { not: null } },
+              { eventDate: { gte: from, lte: to } },
+            ],
+          },
+          {
+            AND: [{ eventDate: null }, { createdAt: { gte: from, lte: to } }],
+          },
+        ],
+      };
+      where = { AND: [where, dateWhere] };
     }
     const [total, data] = await this.prisma.$transaction([
       this.prisma.intervention.count({ where }),
@@ -132,8 +161,20 @@ export class InterventionsService {
         element: true,
         pathology: true,
         companyActor: true,
-        documents: { orderBy: { createdAt: 'desc' }, take: 100 },
-        photos: { orderBy: { createdAt: 'desc' }, take: 100 },
+        documents: {
+          orderBy: [
+            { documentDate: { sort: 'desc', nulls: 'last' } },
+            { createdAt: 'desc' },
+          ],
+          take: 100,
+        },
+        photos: {
+          orderBy: [
+            { takenAt: { sort: 'desc', nulls: 'last' } },
+            { createdAt: 'desc' },
+          ],
+          take: 100,
+        },
         risks: { orderBy: { createdAt: 'desc' }, take: 50 },
       },
     });
@@ -176,6 +217,12 @@ export class InterventionsService {
             dto.plannedEnd !== undefined
               ? dto.plannedEnd
                 ? new Date(dto.plannedEnd)
+                : null
+              : undefined,
+          eventDate:
+            dto.eventDate !== undefined
+              ? dto.eventDate
+                ? parseBusinessDateString(dto.eventDate)
                 : null
               : undefined,
         },

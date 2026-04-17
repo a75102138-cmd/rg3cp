@@ -1,9 +1,19 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { InterventionStatus, InterventionType } from '@prisma/client';
-import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsDateString, IsEnum, IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { BaseListQueryDto } from '../../../common/dto/base-list-query.dto';
 
-export const INTERVENTION_SORT = ['code', 'status', 'plannedStart', 'plannedEnd', 'createdAt', 'updatedAt'] as const;
+export const INTERVENTION_DATE_PRESETS = ['today', 'week', 'month'] as const;
+
+export const INTERVENTION_SORT = [
+  'code',
+  'status',
+  'eventDate',
+  'plannedStart',
+  'plannedEnd',
+  'createdAt',
+  'updatedAt',
+] as const;
 
 export class QueryInterventionDto extends BaseListQueryDto {
   @ApiPropertyOptional()
@@ -41,6 +51,21 @@ export class QueryInterventionDto extends BaseListQueryDto {
   @IsOptional()
   @IsEnum(InterventionStatus)
   status?: InterventionStatus;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  dateFrom?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  dateTo?: string;
+
+  @ApiPropertyOptional({ enum: INTERVENTION_DATE_PRESETS })
+  @IsOptional()
+  @IsIn(INTERVENTION_DATE_PRESETS)
+  datePreset?: (typeof INTERVENTION_DATE_PRESETS)[number];
 
   @ApiPropertyOptional({ enum: INTERVENTION_SORT })
   sortBy?: (typeof INTERVENTION_SORT)[number];

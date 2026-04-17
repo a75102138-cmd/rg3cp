@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProjectStatus } from '@prisma/client';
-import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateProjectDto {
   @ApiProperty()
@@ -33,21 +33,6 @@ export class CreateProjectDto {
   @IsString()
   @MaxLength(10000)
   description?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsUUID()
-  maitreOuvrageActorId?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsUUID()
-  architectActorId?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsUUID()
-  companyActorId?: string;
 
   @ApiPropertyOptional({
     description: 'URL publique de l’image de couverture (sinon envoi via POST …/cover)',

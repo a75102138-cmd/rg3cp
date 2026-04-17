@@ -8,6 +8,10 @@ import { JwtRequestUser } from '../auth.types';
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
+  private expandedRoles(role: UserRole): UserRole[] {
+    return [role];
+  }
+
   canActivate(context: ExecutionContext): boolean {
     const required = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
       context.getHandler(),
@@ -21,7 +25,8 @@ export class RolesGuard implements CanActivate {
     if (!user) {
       throw new ForbiddenException();
     }
-    if (!required.includes(user.role)) {
+    const expanded = this.expandedRoles(user.role);
+    if (!required.some((r) => expanded.includes(r))) {
       throw new ForbiddenException();
     }
     return true;

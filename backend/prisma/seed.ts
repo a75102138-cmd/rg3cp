@@ -116,7 +116,7 @@ async function wipeDemoProjects(): Promise<void> {
   await prisma.project.deleteMany({ where: { id: { in: projIds } } });
 }
 
-/** Compte SUPER_ADMIN pour connexion initiale (mot de passe via SEED_ADMIN_PASSWORD). */
+/** Compte ADMIN pour connexion initiale (mot de passe via SEED_ADMIN_PASSWORD). */
 async function seedPlatformAdmin(): Promise<void> {
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@g3c.local';
   const password = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe123!';
@@ -129,7 +129,7 @@ async function seedPlatformAdmin(): Promise<void> {
       lastName: 'Plateforme',
       email,
       passwordHash: hash,
-      role: UserRole.SUPER_ADMIN,
+      role: UserRole.ADMIN,
       isActive: true,
     },
     update: {},

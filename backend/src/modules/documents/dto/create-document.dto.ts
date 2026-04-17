@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { FileKind } from '@prisma/client';
-import { IsEnum, IsInt, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 export class CreateDocumentDto {
   @ApiProperty({ enum: FileKind })
@@ -100,4 +100,9 @@ export class CreateDocumentDto {
   @IsOptional()
   @IsUUID()
   authorActorId?: string;
+
+  @ApiPropertyOptional({ description: 'Date métier du document (ISO 8601)' })
+  @IsOptional()
+  @IsDateString()
+  documentDate?: string;
 }

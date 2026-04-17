@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -28,15 +29,21 @@ export class CreateUserDto {
   @MaxLength(255)
   email: string;
 
-  @ApiProperty({ description: 'Mot de passe en clair — stocké haché' })
+  @ApiPropertyOptional({ description: 'Mot de passe en clair — stocké haché' })
+  @IsOptional()
   @IsString()
   @MinLength(8)
   @MaxLength(200)
-  password: string;
+  password?: string;
 
   @ApiProperty({ enum: UserRole })
   @IsEnum(UserRole)
   role: UserRole;
+
+  @ApiPropertyOptional({ description: 'Compte utilisateur ACTEUR responsable par défaut de validation', format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  defaultValidatorUserId?: string;
 
   @ApiPropertyOptional({ default: true })
   @IsOptional()

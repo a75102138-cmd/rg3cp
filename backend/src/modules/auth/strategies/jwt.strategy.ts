@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UserRole } from '@prisma/client';
+import { UsersService } from '../../users/users.service';
 import { JwtRequestUser } from '../auth.types';
 
 type JwtPayload = {
@@ -14,7 +15,10 @@ type JwtPayload = {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly usersService: UsersService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -22,12 +26,18 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  validate(payload: JwtPayload): JwtRequestUser {
+  async validate(payload: JwtPayload): Promise<JwtRequestUser> {
+    // Important: role can change after token issuance (e.g., USER -> ADMIN).
+    // Always resolve current role from DB to avoid stale-role 403.
+    const current = await this.usersService.findPublicById(payload.sub).catch(() => null);
+    if (!current?.id) {
+      throw new UnauthorizedException();
+    }
     return {
-      sub: payload.sub,
-      email: payload.email,
-      role: payload.role,
-      code: payload.code,
+      sub: current.id,
+      email: current.email,
+      role: current.role as UserRole,
+      code: current.code,
     };
   }
 }

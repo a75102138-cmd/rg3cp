@@ -8,11 +8,11 @@ import { Prisma } from '@prisma/client';
 import { buildMeta, getSkip } from '../../common/utils/pagination.util';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
 import { PrismaService } from '../../prisma/prisma.service';
-import { requireActor } from '../../common/validation/domain-validation';
 import { CloudinaryPathBuilderService } from '../cloudinary/cloudinary-path-builder.service';
 import { CloudinaryUploadService } from '../cloudinary/cloudinary-upload.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { PROJECT_SORT, QueryProjectDto } from './dto/query-project.dto';
+import { UpdateProjectAssignmentsDto } from './dto/update-project-assignments.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 
 @Injectable()
@@ -39,6 +39,10 @@ export class ProjectsService {
     };
   }
 
+  private uniqueIds(ids: string[] | undefined): string[] {
+    return Array.from(new Set((ids ?? []).filter(Boolean)));
+  }
+
   /** Next sequential code PRJ-0001, PRJ-0002, … among existing codes matching /^PRJ-\d+$/i */
   private async generateNextProjectCode(): Promise<string> {
     const rows = await this.prisma.project.findMany({ select: { code: true } });
@@ -52,9 +56,6 @@ export class ProjectsService {
   }
 
   async create(dto: CreateProjectDto) {
-    if (dto.maitreOuvrageActorId) await requireActor(this.prisma, dto.maitreOuvrageActorId);
-    if (dto.architectActorId) await requireActor(this.prisma, dto.architectActorId);
-    if (dto.companyActorId) await requireActor(this.prisma, dto.companyActorId);
     const dates = this.parseDates(dto);
     if (!dates.startDate || Number.isNaN(dates.startDate.getTime())) {
       throw new BadRequestException('startDate invalide');
@@ -70,9 +71,6 @@ export class ProjectsService {
       status: dto.status,
       startDate: dates.startDate,
       plannedEndDate: dates.plannedEndDate,
-      maitreOuvrageActorId: dto.maitreOuvrageActorId,
-      architectActorId: dto.architectActorId,
-      companyActorId: dto.companyActorId,
     };
     for (let attempt = 0; attempt < 8; attempt++) {
       const code = await this.generateNextProjectCode();
@@ -114,9 +112,17 @@ export class ProjectsService {
         take: limit,
         orderBy: this.orderBy(query),
         include: {
-          maitreOuvrageActor: true,
-          architectActor: true,
-          companyActor: true,
+          _count: {
+            select: {
+              zones: true,
+              logbooks: true,
+              documents: true,
+              photos: true,
+              risks: true,
+              userAssignments: true,
+              actorAssignments: true,
+            },
+          },
         },
       }),
     ]);
@@ -157,9 +163,6 @@ export class ProjectsService {
     const p = await this.prisma.project.findUnique({
       where: { id },
       include: {
-        maitreOuvrageActor: true,
-        architectActor: true,
-        companyActor: true,
         _count: {
           select: {
             zones: true,
@@ -167,6 +170,8 @@ export class ProjectsService {
             documents: true,
             photos: true,
             risks: true,
+            userAssignments: true,
+            actorAssignments: true,
           },
         },
       },
@@ -177,9 +182,6 @@ export class ProjectsService {
 
   async update(id: string, dto: UpdateProjectDto) {
     await this.findOne(id);
-    if (dto.maitreOuvrageActorId) await requireActor(this.prisma, dto.maitreOuvrageActorId);
-    if (dto.architectActorId) await requireActor(this.prisma, dto.architectActorId);
-    if (dto.companyActorId) await requireActor(this.prisma, dto.companyActorId);
     const dates = this.parseDates(dto);
     const data: Prisma.ProjectUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name.trim();
@@ -200,21 +202,6 @@ export class ProjectsService {
       data.imageUrl =
         dto.imageUrl && String(dto.imageUrl).trim() !== '' ? String(dto.imageUrl).trim() : null;
     }
-    if (dto.maitreOuvrageActorId !== undefined) {
-      data.maitreOuvrageActor = dto.maitreOuvrageActorId
-        ? { connect: { id: dto.maitreOuvrageActorId } }
-        : { disconnect: true };
-    }
-    if (dto.architectActorId !== undefined) {
-      data.architectActor = dto.architectActorId
-        ? { connect: { id: dto.architectActorId } }
-        : { disconnect: true };
-    }
-    if (dto.companyActorId !== undefined) {
-      data.companyActor = dto.companyActorId
-        ? { connect: { id: dto.companyActorId } }
-        : { disconnect: true };
-    }
     try {
       return await this.prisma.project.update({
         where: { id },
@@ -223,6 +210,90 @@ export class ProjectsService {
     } catch (e) {
       handlePrismaError(e);
     }
+  }
+
+  async findAssignments(id: string) {
+    await this.findOne(id);
+    return this.prisma.project.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        userAssignments: {
+          select: {
+            userId: true,
+            user: {
+              select: {
+                id: true,
+                code: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                role: true,
+                isActive: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+        actorAssignments: {
+          select: {
+            actorId: true,
+            actor: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                organization: true,
+                role: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+  }
+
+  async updateAssignments(id: string, dto: UpdateProjectAssignmentsDto) {
+    await this.findOne(id);
+    const userIds = this.uniqueIds(dto.userIds);
+    const actorIds = this.uniqueIds(dto.actorIds);
+
+    if (userIds.length) {
+      const existingUsers = await this.prisma.user.count({ where: { id: { in: userIds } } });
+      if (existingUsers !== userIds.length) {
+        throw new BadRequestException('Au moins un utilisateur assigné est introuvable');
+      }
+    }
+    if (actorIds.length) {
+      const existingActors = await this.prisma.actor.count({ where: { id: { in: actorIds } } });
+      if (existingActors !== actorIds.length) {
+        throw new BadRequestException('Au moins un acteur assigné est introuvable');
+      }
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.projectUserAssignment.deleteMany({ where: { projectId: id } }),
+      this.prisma.projectActorAssignment.deleteMany({ where: { projectId: id } }),
+      ...(userIds.length
+        ? [
+            this.prisma.projectUserAssignment.createMany({
+              data: userIds.map((userId) => ({ projectId: id, userId })),
+            }),
+          ]
+        : []),
+      ...(actorIds.length
+        ? [
+            this.prisma.projectActorAssignment.createMany({
+              data: actorIds.map((actorId) => ({ projectId: id, actorId })),
+            }),
+          ]
+        : []),
+    ]);
+
+    return this.findAssignments(id);
   }
 
   /**

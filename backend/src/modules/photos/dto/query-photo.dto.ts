@@ -1,10 +1,28 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { FileKind } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 import { BaseListQueryDto } from '../../../common/dto/base-list-query.dto';
 
-export const PHOTO_SORT = ['title', 'caption', 'originalFilename', 'createdAt', 'updatedAt'] as const;
+export const PHOTO_DATE_PRESETS = ['today', 'week', 'month'] as const;
+
+export const PHOTO_SORT = [
+  'title',
+  'caption',
+  'originalFilename',
+  'takenAt',
+  'createdAt',
+  'updatedAt',
+] as const;
 
 export class QueryPhotoDto extends BaseListQueryDto {
   @ApiPropertyOptional()
@@ -69,4 +87,59 @@ export class QueryPhotoDto extends BaseListQueryDto {
 
   @ApiPropertyOptional({ enum: PHOTO_SORT })
   sortBy?: (typeof PHOTO_SORT)[number];
+
+  @ApiPropertyOptional({ description: 'Filtre sur date métier (prise ou upload si prise absente)' })
+  @IsOptional()
+  @IsDateString()
+  dateFrom?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  dateTo?: string;
+
+  @ApiPropertyOptional({ enum: PHOTO_DATE_PRESETS, description: 'Raccourci (prioritaire sur dateFrom/dateTo si fourni)' })
+  @IsOptional()
+  @IsIn(PHOTO_DATE_PRESETS)
+  datePreset?: (typeof PHOTO_DATE_PRESETS)[number];
+
+  @ApiPropertyOptional({ enum: ['PENDING', 'APPROVED', 'REJECTED'] })
+  @IsOptional()
+  @IsIn(['PENDING', 'APPROVED', 'REJECTED'])
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  category?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  subCategory?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  bddCategory?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  tableName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  subFolder?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  relatedZoneId?: string;
 }

@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   UploadedFile,
   UseInterceptors,
@@ -16,6 +17,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { QueryProjectDto } from './dto/query-project.dto';
+import { UpdateProjectAssignmentsDto } from './dto/update-project-assignments.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectsService } from './projects.service';
 
@@ -36,7 +38,7 @@ export class ProjectsController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 12 * 1024 * 1024 },
+      limits: { fileSize: 100 * 1024 * 1024 },
     }),
   )
   uploadCover(
@@ -56,9 +58,22 @@ export class ProjectsController {
     return this.projectsService.findOne(id);
   }
 
+  @Get(':id/assignments')
+  findAssignments(@Param('id', ParseUUIDPipe) id: string) {
+    return this.projectsService.findAssignments(id);
+  }
+
   @Patch(':id')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateProjectDto) {
     return this.projectsService.update(id, dto);
+  }
+
+  @Put(':id/assignments')
+  updateAssignments(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateProjectAssignmentsDto,
+  ) {
+    return this.projectsService.updateAssignments(id, dto);
   }
 
   @Delete(':id')

@@ -7,12 +7,14 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ActorsService } from './actors.service';
 import { CreateActorDto } from './dto/create-actor.dto';
 import { QueryActorDto } from './dto/query-actor.dto';
+import { UpdateActorProjectsDto } from './dto/update-actor-projects.dto';
 import { UpdateActorDto } from './dto/update-actor.dto';
 
 @ApiTags('actors')
@@ -43,6 +45,21 @@ export class ActorsController {
   @ApiOperation({ summary: 'Update actor' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateActorDto) {
     return this.actorsService.update(id, dto);
+  }
+
+  @Get(':id/projects')
+  @ApiOperation({ summary: 'Assigned projects for actor' })
+  findProjects(@Param('id', ParseUUIDPipe) id: string) {
+    return this.actorsService.findAssignedProjects(id);
+  }
+
+  @Put(':id/projects')
+  @ApiOperation({ summary: 'Update assigned projects for actor' })
+  updateProjects(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateActorProjectsDto,
+  ) {
+    return this.actorsService.updateAssignedProjects(id, dto.projectIds ?? []);
   }
 
   @Delete(':id')
