@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* G3C — vert = actions, bleu marine = marque / titres */
+    --background: 210 30% 98%;
+    --foreground: 222 47% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 14%;
+    --brand: 222 52% 20%;
+    --brand-foreground: 210 30% 98%;
+    --primary: 156 55% 34%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 18%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 42%;
+    --accent: 156 35% 94%;
+    --accent-foreground: 222 52% 22%;
+    --destructive: 0 72% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+    --ring: 156 55% 38%;
+    --radius: 0.625rem;
+    --success: 152 50% 34%;
+    --warning: 38 88% 44%;
+    --info: 214 50% 42%;
+    --bronze: 28 28% 42%;
+    --bronze-muted: 28 18% 52%;
+    --patrimoine-stone: 222 12% 46%;
+    --patrimoine-sand: 156 22% 94%;
+    --patrimoine-clay: 220 12% 90%;
+  }
+
+  .dark {
+    --background: 222 38% 9%;
+    --foreground: 210 25% 96%;
+    --card: 222 36% 11%;
+    --card-foreground: 210 25% 96%;
+    --popover: 222 36% 11%;
+    --popover-foreground: 210 25% 96%;
+    --brand: 214 45% 88%;
+    --brand-foreground: 222 47% 12%;
+    --primary: 152 48% 42%;
+    --primary-foreground: 222 47% 8%;
+    --secondary: 222 26% 16%;
+    --secondary-foreground: 210 25% 96%;
+    --muted: 222 22% 18%;
+    --muted-foreground: 220 12% 68%;
+    --accent: 156 22% 18%;
+    --accent-foreground: 152 40% 88%;
+    --destructive: 0 58% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 22% 20%;
+    --input: 222 22% 20%;
+    --ring: 152 48% 45%;
+    --success: 152 45% 40%;
+    --warning: 38 80% 50%;
+    --info: 214 55% 65%;
+    --bronze: 28 35% 48%;
+    --bronze-muted: 28 18% 38%;
+    --patrimoine-stone: 220 12% 62%;
+    --patrimoine-sand: 156 15% 20%;
+    --patrimoine-clay: 222 18% 24%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
