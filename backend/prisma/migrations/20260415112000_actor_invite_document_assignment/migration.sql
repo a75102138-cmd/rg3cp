@@ -1,0 +1,2 @@
+-- No-op baseline migration placeholder.
+-- This file was missing and is required by Prisma migration tooling.
