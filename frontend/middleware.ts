@@ -6,7 +6,12 @@ import { AUTH_COOKIE } from "@/lib/auth/constants";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/login") || pathname.startsWith("/register") || pathname.startsWith("/invite")) {
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register") ||
+    pathname.startsWith("/invite") ||
+    pathname.startsWith("/health")
+  ) {
     const token = request.cookies.get(AUTH_COOKIE)?.value;
     if (token && (pathname === "/login" || pathname === "/register" || pathname === "/invite")) {
       return NextResponse.redirect(new URL("/", request.url));
