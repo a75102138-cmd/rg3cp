@@ -68,7 +68,7 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup(`${apiPrefix}/${docsSegment}`, app, document);
 
   const port = Number(config.get('app.port') ?? 3001);
-  await app.listen(Number.isFinite(port) ? port : 3001);
+  await app.listen(Number.isFinite(port) ? port : 3001, '0.0.0.0');
 }
 
 bootstrap();

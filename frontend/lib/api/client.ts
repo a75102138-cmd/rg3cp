@@ -1,11 +1,16 @@
 import { getAccessToken } from "@/lib/auth/token";
 
-/** Même port que le backend par défaut (3001) pour éviter d’appeler Next sur :3000 par erreur. */
-const DEFAULT_BASE = "http://localhost:3001/api";
+const DEFAULT_LOCAL_BASE = "http://localhost:3001/api";
+const envApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+if (!envApiBaseUrl && process.env.NODE_ENV === "production") {
+  throw new Error("Missing NEXT_PUBLIC_API_BASE_URL in production");
+}
+
+export const API_BASE_URL = (envApiBaseUrl || DEFAULT_LOCAL_BASE).replace(/\/$/, "");
 
 export function getApiBase(): string {
-  const raw = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_BASE;
-  return raw.replace(/\/$/, "");
+  return API_BASE_URL;
 }
 
 function authHeader(): HeadersInit {
